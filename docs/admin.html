@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Secret Santa 🎄</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <main class="card">
+    <h1>🎄 Admin Secret Santa</h1>
+    <p class="sub">
+      Crée une room, importe la liste des participants, puis lance le tirage.
+      Ensuite, envoie les liens privés à chacun.
+    </p>
+
+    <!-- ROOM / ADMIN -->
+    <div class="grid2">
+      <div>
+        <label class="label" for="roomCode">Code de la room</label>
+        <input
+          id="roomCode"
+          class="input"
+          placeholder="SS-24JAN"
+          autocomplete="off"
+        />
+      </div>
+
+      <div>
+        <label class="label" for="adminKey">Admin key</label>
+        <input
+          id="adminKey"
+          class="input"
+          placeholder="(auto après création)"
+          autocomplete="off"
+        />
+      </div>
+    </div>
+
+    <button id="createRoom" class="btn">
+      Créer / Charger la room
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- IMPORT -->
+    <label class="label" for="importBox">
+      Importer les participants
+    </label>
+    <p class="hint">
+      Format attendu : <strong>Prénom - description</strong> (1 ligne par personne)
+    </p>
+
+    <textarea
+      id="importBox"
+      class="textarea"
+      rows="8"
+      placeholder=" Touk- Constructeur de PC, fan de jeux vidéo, entrepreneur
+     Hélène - Pâtisserie, Batman, Disney, sport, amis & famille
+     Zac - Boxe, mangas, jeux vidéo, voyages
+     Aditi - Lecture, calme, thé, bonne nourriture, danse
+     Amir - Jeux vidéo, sports, tester de nouvelles activités
+     Farah - Mode, soins beauté/maquillage, simplicité, voyages, jeux vidéo
+     David - Mangas, jeux vidéo, restos, voyages, simple et chill
+     Sonia - Mangas, sport, jeux vidéo, geek, LEGO, voyages"
+    ></textarea>
+
+    <button id="importBtn" class="btn btn-ghost">
+      Importer la liste
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- ACTIONS -->
+    <div class="grid2">
+      <button id="refreshBtn" class="btn btn-ghost">
+        🔄 Rafraîchir
+      </button>
+      <button id="drawBtn" class="btn">
+        🎁 Lancer le tirage
+      </button>
+    </div>
+
+    <div id="roomStatus" class="status"></div>
+
+    <div class="divider"></div>
+
+    <!-- LINKS -->
+    <h2 class="h2">📩 Liens privés à envoyer</h2>
+    <div id="links" class="links"></div>
+
+    <footer class="footer">
+      ⚠️ Garde l’admin key précieusement — c’est la clé de la room.
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
