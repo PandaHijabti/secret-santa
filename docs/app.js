@@ -1,3 +1,5 @@
+const PAGE = location.pathname.split("/").pop();
+
 // ========= Utils =========
 function qs(id) { return document.getElementById(id); }
 
@@ -68,40 +70,66 @@ function showPickedAnimated(receiver) {
 document.addEventListener("DOMContentLoaded", () => {
   const page = location.pathname.split("/").pop();
 
-  if (page === "" || page === "index.html") initIndex();
-  if (page === "me.html") initMe();
-  // Si tu utilises encore admin.html avec l'ancien backend Node, on le retire ici
-  // parce que maintenant tu es sur Supabase Edge Function.
-});
+if (PAGE === "" || PAGE === "index.html") {
+  const ENDPOINT = "https://yafmagrjygecwlutxkup.supabase.co/functions/v1/secret-santa";
 
-// ========= Index =========
-// ✅ Sur index.html : on envoie giverName et on affiche le parchemin
-function initIndex() {
-  const giverInput = qs("giverName");
-  const goBtn = qs("goBtn");
-  if (!giverInput || !goBtn) return;
+  const giverInput = document.getElementById("giverName");
+  const goBtn = document.getElementById("goBtn");
 
   goBtn.addEventListener("click", async () => {
-    const giverName = (giverInput.value || "").trim();
-    if (!giverName) return alert("Entre ton prénom 🙂");
+  const giverName = giverInput.value.trim();
+  if (!giverName) {
+    alert("Entre ton prénom 🙂");
+    return;
+  }
 
-    goBtn.disabled = true;
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ giverName })
+    });
 
-    try {
-      // ⚠️ Ici, on envoie ce que ton Edge Function attend
-      // et on attend { receiver: { name, desc } }
-      const data = await callEdge({ giverName });
+    const data = await res.json();
 
-      if (data.receiver) showPickedAnimated(data.receiver);
-      else alert(JSON.stringify(data));
-
-    } catch (e) {
-      alert(`❌ ${e.message}`);
-      console.error(e);
-    } finally {
-      goBtn.disabled = false;
+    if (!res.ok) {
+      alert(`Erreur ${res.status}:\n${JSON.stringify(data)}`);
+      return;
     }
-  });
+
+    showPickedAnimated(data.receiver);
+
+  } catch (e) {
+    alert("Erreur réseau");
+    console.error(e);
+  }
+});
+
+
+// ⬇️ ⬇️ ⬇️ ICI EXACTEMENT ⬇️ ⬇️ ⬇️
+function showPickedAnimated(receiver) {
+  const scrollEl = document.getElementById("scroll");
+  const pickedName = document.getElementById("pickedName");
+  const pickedDesc = document.getElementById("pickedDesc");
+  const whooshEl = document.getElementById("whooshSound");
+
+  // ✅ Si la page n'a pas le parchemin → fallback
+  if (!scrollEl || !pickedName) {
+    alert(`🎁 Tu offres à : ${receiver.name}`);
+    return;
+  }
+
+  pickedName.textContent = receiver.name;
+  pickedDesc.textContent = receiver.desc || "";
+
+  scrollEl.classList.add("show");
+
+  if (whooshEl) {
+    whooshEl.currentTime = 0;
+    whooshEl.play().catch(() => {});
+  }
+}
+
 }
 
 // ========= Me (optionnel) =========
