@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Secret Santa 🎄</title>
+  <tittle>Samedi 24 Janvier à 19h30 au Casa Rosa, 210 Bd Macdonald, 75019 Paris</tittle>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="card">
+    <h1>🎅 Secret Santa</h1>
+    <p class="sub">Entre ton prénom, et pioche un prénom une description de la personne pour t'aider à choisir un joli cadeau.</p>
+    <p class="sub">un cadeau ne dépassant pas les 20 euros.</p>
+
+    <label class="label" for="giverName">Ton prénom</label>
+    <input id="giverName" class="input" placeholder="Ex: Sonia" autocomplete="off" />
+
+    <button id="goBtn" class="btn">Aller piocher 🎁</button>
+
+    <div class="divider"></div>
+
+    <details class="details">
+      <summary>⚙️ Options</summary>
+      <button id="resetBtn" class="btn btn-ghost">Réinitialiser la session</button>
+      <p class="hint">Astuce : vous pouvez aussi “Ajouter à l’écran d’accueil” sur mobile.</p>
+    </details>
+
+    <footer class="footer">Made with 🐼 + 🎄</footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

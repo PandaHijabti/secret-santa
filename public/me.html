@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mon Secret Santa 🎁</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Neige -->
+  <div class="snow" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <main class="card magic">
+    <h1>🎁 Ta pioche magique</h1>
+    <p class="sub">Clique pour révéler ton destin de Père Noël secret ✨</p>
+
+    <div id="status" class="status"></div>
+
+    <section class="stage">
+      <div class="hat-wrap">
+        <div class="sparkles" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span>
+        </div>
+
+        <div class="hat">
+          <div class="hat-top"></div>
+          <div class="hat-brim"></div>
+          <div class="hat-fur"></div>
+        </div>
+
+        <div id="scroll" class="scroll">
+          <div class="scroll-roll top"></div>
+          <div class="scroll-paper">
+            <div class="scroll-tag">Tu offres à…</div>
+            <div id="pickedName" class="scroll-name">—</div>
+            <div id="pickedDesc" class="scroll-desc"></div>
+            <div class="scroll-note">⚠️ Garde ça secret 🤫</div>
+          </div>
+          <div class="scroll-roll bottom"></div>
+        </div>
+      </div>
+
+      <button id="revealBtn" class="btn btn-magic">Lancer le tirage ✨</button>
+
+      <div class="musicbar">
+        <button id="musicToggle" class="btn btn-ghost">🎶 Lancer la musique</button>
+      </div>
+    </section>
+
+    <footer class="footer">Joyeux Noël 🎅</footer>
+
+    <audio id="whooshSound" src="whoosh.mp3" preload="auto"></audio>
+    <audio id="bgMusic" src="noel.mp3" preload="auto" loop></audio>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
