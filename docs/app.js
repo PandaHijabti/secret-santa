@@ -1,31 +1,59 @@
-const PAGE = location.pathname.split("/").pop();
-
-// ========= Utils =========
-function qs(id) { return document.getElementById(id); }
+// ============================
+// Secret Santa - Front (GitHub Pages) -> Supabase Edge Function
+// Pages: admin.html / me.html / index.html
+// ============================
 
 const ENDPOINT = "https://yafmagrjygecwlutxkup.supabase.co/functions/v1/secret-santa";
 
-async function callEdge(payload) {
-  const res = await fetch(ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhZm1hZ3JqeWdlY3dsdXR4a3VwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMzYxMTQsImV4cCI6MjA4MTYxMjExNH0.CTEbnH3AMUdxhTl_xPT7nQ4_uf1THT037rl7oz3jAFM";
+
+function qs(id) { return document.getElementById(id); }
+
+function getParams() {
+  const u = new URL(location.href);
+  return {
+    room: (u.searchParams.get("room") || "").toUpperCase(),
+    admin: u.searchParams.get("admin") || "",
+    key: u.searchParams.get("key") || ""
+  };
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  }[m]));
+}
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/"/g, "&quot;");
+}
+
+// --- Call Edge Function "router"
+async function api(path, opts = {}) {
+  const url = ENDPOINT + path;
+
+  const res = await fetch(url, {
+    method: opts.method || "GET",
+    headers: { ...(opts.headers || {}),
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": 'Bearer ${SUPABASE_ANON_KEY}',
+  },
+    body: opts.body
   });
 
-  // On essaye JSON, sinon texte
   const text = await res.text();
   let data;
-  try { data = JSON.parse(text); }
-  catch { data = { raw: text }; }
+  try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
   if (!res.ok) {
-    const msg = data?.error || data?.message || text || `Erreur ${res.status}`;
+    const msg = data?.error || data?.message || text || `HTTP ${res.status}`;
     throw new Error(msg);
   }
   return data;
 }
 
-// ========= Animation parchemin (global) =========
+// ============================
+// Animation parchemin (global)
+// ============================
 function showPickedAnimated(receiver) {
   const hatEl = document.querySelector(".hat");
   const scrollEl = qs("scroll");
@@ -35,16 +63,17 @@ function showPickedAnimated(receiver) {
   const pickedName = qs("pickedName");
   const pickedDesc = qs("pickedDesc");
 
-  // fallback si la page n'a pas les éléments (ex: index sans parchemin)
-  const name = receiver?.name || receiver;
-  const desc = receiver?.desc || "";
+  const name = receiver?.name || "";
+  const desc = receiver?.desc || receiver?.description || "";
+
+  // fallback si on est sur une page sans parchemin
   if (!pickedName || !scrollEl) {
     alert(`🎁 Tu offres à : ${name}${desc ? "\n" + desc : ""}`);
     return;
   }
 
-  pickedName.textContent = name || "";
-  pickedDesc.textContent = desc || "";
+  pickedName.textContent = name;
+  pickedDesc.textContent = desc;
 
   hatEl?.classList.remove("spitting");
   scrollEl?.classList.remove("show");
@@ -66,82 +95,174 @@ function showPickedAnimated(receiver) {
   }, 520);
 }
 
-// ========= Pages =========
-document.addEventListener("DOMContentLoaded", () => {
-  const page = location.pathname.split("/").pop();
+// ============================
+// Admin page
+// ============================
+function initAdmin() {
+  const params = getParams();
 
-if (PAGE === "" || PAGE === "index.html") {
-  const ENDPOINT = "https://yafmagrjygecwlutxkup.supabase.co/functions/v1/secret-santa";
+  const roomCode = qs("roomCode");
+  const adminKey = qs("adminKey");
+  const status = qs("roomStatus");
+  const linksBox = qs("links");
 
-  const giverInput = document.getElementById("giverName");
-  const goBtn = document.getElementById("goBtn");
+  if (!roomCode || !adminKey || !status || !linksBox) return;
 
-  goBtn.addEventListener("click", async () => {
-  const giverName = giverInput.value.trim();
-  if (!giverName) {
-    alert("Entre ton prénom 🙂");
-    return;
-  }
+  // preload from url or localStorage
+  roomCode.value = params.room || localStorage.getItem("ss_room") || "SS-24JAN";
+  adminKey.value = params.admin || localStorage.getItem("ss_admin") || "";
 
-  try {
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ giverName })
-    });
+  qs("createRoom")?.addEventListener("click", async () => {
+    const code = (roomCode.value || "").trim().toUpperCase();
+    if (!code) return alert("Mets un room code 🙂");
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(`Erreur ${res.status}:\n${JSON.stringify(data)}`);
-      return;
+    // si adminKey déjà renseignée -> juste refresh
+    if (adminKey.value.trim()) {
+      localStorage.setItem("ss_room", code);
+      localStorage.setItem("ss_admin", adminKey.value.trim());
+      status.textContent = `Room ${code} chargée.`;
+      return refresh();
     }
 
-    showPickedAnimated(data.receiver);
+    try {
+      const created = await api("/api/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code })
+      });
 
-  } catch (e) {
-    alert("Erreur réseau");
-    console.error(e);
-  }
-});
+      adminKey.value = created.adminKey;
+      localStorage.setItem("ss_room", created.code);
+      localStorage.setItem("ss_admin", created.adminKey);
+      status.textContent = `✅ Room créée: ${created.code} (adminKey sauvegardée ici).`;
 
+      await refresh();
+    } catch (e) {
+      status.textContent = `⚠️ Room existe déjà. Renseigne l’adminKey puis “Rafraîchir”.`;
+    }
+  });
 
-// ⬇️ ⬇️ ⬇️ ICI EXACTEMENT ⬇️ ⬇️ ⬇️
-function showPickedAnimated(receiver) {
-  const scrollEl = document.getElementById("scroll");
-  const pickedName = document.getElementById("pickedName");
-  const pickedDesc = document.getElementById("pickedDesc");
-  const whooshEl = document.getElementById("whooshSound");
+  qs("importBtn")?.addEventListener("click", async () => {
+    const code = (roomCode.value || "").trim().toUpperCase();
+    const admin = (adminKey.value || "").trim();
+    if (!code || !admin) return alert("Room + adminKey obligatoires 🙂");
 
-  // ✅ Si la page n'a pas le parchemin → fallback
-  if (!scrollEl || !pickedName) {
-    alert(`🎁 Tu offres à : ${receiver.name}`);
-    return;
-  }
+    const raw = (qs("importBox")?.value || "").trim();
+    if (!raw) return alert("Colle ta liste 🙂");
 
-  pickedName.textContent = receiver.name;
-  pickedDesc.textContent = receiver.desc || "";
+    const lines = raw.split("\n")
+      .map(l => l.trim())
+      .filter(Boolean)
+      .map(l => {
+        const parts = l.split(" - ");
+        if (parts.length < 2) return null;
+        return { name: parts[0].trim(), desc: parts.slice(1).join(" - ").trim() };
+      })
+      .filter(Boolean);
 
-  scrollEl.classList.add("show");
+    if (!lines.length) return alert("Format attendu: Prénom - description");
 
-  if (whooshEl) {
-    whooshEl.currentTime = 0;
-    whooshEl.play().catch(() => {});
+    try {
+      const data = await api(`/api/rooms/${encodeURIComponent(code)}/import`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${admin}`
+        },
+        body: JSON.stringify({ lines })
+      });
+
+      status.textContent = `✅ Import: ${data.createdCount} ajoutés.`;
+      await refresh();
+    } catch (e) {
+      status.textContent = `❌ ${e.message}`;
+    }
+  });
+
+  qs("refreshBtn")?.addEventListener("click", refresh);
+
+  qs("drawBtn")?.addEventListener("click", async () => {
+    const code = (roomCode.value || "").trim().toUpperCase();
+    const admin = (adminKey.value || "").trim();
+    if (!code || !admin) return alert("Room + adminKey obligatoires 🙂");
+
+    if (!confirm("Lancer le tirage ? Après ça, c’est figé 🔒")) return;
+
+    try {
+      const data = await api(`/api/rooms/${encodeURIComponent(code)}/draw`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${admin}` }
+      });
+
+      status.textContent = `🎁 Tirage: ${data.status} (${data.count || ""})`;
+      await refresh();
+    } catch (e) {
+      status.textContent = `❌ ${e.message}`;
+    }
+  });
+
+  async function refresh() {
+    const code = (roomCode.value || "").trim().toUpperCase();
+    const admin = (adminKey.value || "").trim();
+    if (!code || !admin) return;
+
+    try {
+      const data = await api(`/api/rooms/${encodeURIComponent(code)}/links`, {
+        headers: { "Authorization": `Bearer ${admin}` }
+      });
+
+      status.textContent = `Room ${data.room} — status: ${data.status}`;
+
+      linksBox.innerHTML = (data.participants || []).map(p => {
+        // ✅ crucial pour GitHub Pages (/secret-santa/)
+        const full = new URL(p.link, location.href).href;
+
+        const hint = p.desc || p.description || "";
+
+        return `
+          <div class="linkCard">
+            <div class="linkTop">
+              <div class="linkName">${escapeHtml(p.name)}</div>
+              <button class="copyBtn" data-copy="${escapeAttr(full)}">Copier lien</button>
+            </div>
+            <div class="linkUrl">${escapeHtml(full)}</div>
+            <div class="hint">${escapeHtml(hint)}</div>
+          </div>
+        `;
+      }).join("");
+
+      linksBox.querySelectorAll(".copyBtn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const text = btn.getAttribute("data-copy");
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = "✅ Copié";
+          } catch {
+            alert("Copie manuelle:\n" + text);
+          }
+          setTimeout(() => btn.textContent = "Copier lien", 900);
+        });
+      });
+
+    } catch (e) {
+      status.textContent = `❌ ${e.message}`;
+    }
   }
 }
 
-}
-
-// ========= Me (optionnel) =========
-// ✅ Si tu gardes une page me.html (révélation) avec musique
+// ============================
+// Me page (révélation + musique)
+// ============================
 function initMe() {
-  const revealBtn = qs("revealBtn");
-  const status = qs("status");
+  const { room, key } = getParams();
 
+  const status = qs("status");
+  const revealBtn = qs("revealBtn");
+
+  // Musique (optionnel)
   const music = qs("bgMusic");
   const musicToggle = qs("musicToggle");
 
-  // Toggle musique (si présent)
   if (music && musicToggle) {
     music.volume = 0.25;
 
@@ -160,23 +281,51 @@ function initMe() {
     });
   }
 
-  // Si tu n'utilises plus me.html, rien à faire
-  if (!revealBtn) return;
+  if (!status || !revealBtn) return;
 
-  // Exemple : révélation via un appel simple (à adapter si tu as un système de lien)
+  if (!room || !key) {
+    status.textContent = "❌ Lien invalide (room/key manquant). Demande un nouveau lien à l’admin.";
+    revealBtn.disabled = true;
+    return;
+  }
+
+  status.textContent = `Room: ${room}. En attente du tirage…`;
+
   revealBtn.addEventListener("click", async () => {
-    try {
-      status && (status.textContent = "La magie opère… ✨");
-      const data = await callEdge({ action: "me" }); // à adapter si besoin
+    revealBtn.disabled = true;
+    status.textContent = "La magie opère… ✨";
 
-      if (data.receiver) {
-        showPickedAnimated(data.receiver);
-        status && (status.textContent = "✅ Révélé. Joyeux Secret Santa 🎁");
-      } else {
-        status && (status.textContent = "❌ Réponse inattendue");
+    // démarre musique au clic (plus fiable mobile)
+    if (music && music.paused) {
+      try { await music.play(); } catch {}
+    }
+
+    try {
+      const data = await api(`/api/rooms/${encodeURIComponent(room)}/me`, {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${key}` }
+      });
+
+      if (data.status !== "DRAWN") {
+        status.textContent = "⏳ Le tirage n’a pas encore été lancé. Reviens plus tard 🙂";
+        revealBtn.disabled = false;
+        return;
       }
+
+      showPickedAnimated({ name: data.receiverName, desc: data.receiverDesc });
+      status.textContent = "✅ Révélé. Joyeux Secret Santa 🎁";
     } catch (e) {
-      status && (status.textContent = `❌ ${e.message}`);
+      status.textContent = `❌ ${e.message}`;
+      revealBtn.disabled = false;
     }
   });
 }
+
+// ============================
+// Boot
+// ============================
+document.addEventListener("DOMContentLoaded", () => {
+  const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  if (page === "admin.html") initAdmin();
+  if (page === "me.html") initMe();
+});
