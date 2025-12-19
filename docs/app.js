@@ -3,7 +3,9 @@
 // Pages: admin.html / me.html / index.html
 // ============================
 
-const ENDPOINT = "https://yafmagrjygecwlutxkup.supabase.co/functions/v1/secret-santa";
+const ENDPOINT =
+  "https://yafmagrjygecwlutxkup.supabase.co/functions/v1/secret-santa";
+
 
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhZm1hZ3JqeWdlY3dsdXR4a3VwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMzYxMTQsImV4cCI6MjA4MTYxMjExNH0.CTEbnH3AMUdxhTl_xPT7nQ4_uf1THT037rl7oz3jAFM";
 
@@ -27,16 +29,22 @@ function escapeAttr(s) {
   return escapeHtml(s).replace(/"/g, "&quot;");
 }
 
-// --- Call Edge Function "router"
 async function api(path, opts = {}) {
-  const url = ENDPOINT + path;
+  const url = `${ENDPOINT}${path}`;
+
+  const headers = {
+    "apikey": SUPABASE_ANON_KEY,
+    ...(opts.headers || {})
+  };
+
+  // si aucune Authorization explicite → anon
+  if (!headers.Authorization && !headers.authorization) {
+    headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
+  }
 
   const res = await fetch(url, {
     method: opts.method || "GET",
-    headers: { ...(opts.headers || {}),
-    "apikey": SUPABASE_ANON_KEY,
-    "Authorization": 'Bearer ${SUPABASE_ANON_KEY}',
-  },
+    headers,
     body: opts.body
   });
 
@@ -45,11 +53,11 @@ async function api(path, opts = {}) {
   try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
   if (!res.ok) {
-    const msg = data?.error || data?.message || text || `HTTP ${res.status}`;
-    throw new Error(msg);
+    throw new Error(data?.error || data?.message || text || `HTTP ${res.status}`);
   }
   return data;
 }
+
 
 // ============================
 // Animation parchemin (global)
